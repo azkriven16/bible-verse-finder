@@ -1,101 +1,169 @@
-import Image from "next/image";
+"use client";
+
+import type React from "react";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import { Loader2, BookOpen, AlertCircle } from "lucide-react";
+import { VerseSuggestions } from "@/components/verse-suggestions";
+import { ExampleLessons } from "@/components/example-lessons";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    const [lesson, setLesson] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [results, setResults] = useState<{
+        lesson: string;
+        verses: { reference: string; text: string; explanation: string }[];
+    } | null>(null);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!lesson.trim()) return;
+
+        setIsLoading(true);
+        setResults(null);
+        setError(null);
+
+        try {
+            // Use fetch with text() first to avoid JSON parsing errors
+            const response = await fetch("/api/find-verses", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ lesson }),
+            });
+
+            // First get the raw text
+            const rawText = await response.text();
+
+            // Then try to parse it as JSON
+            let data;
+            try {
+                data = JSON.parse(rawText);
+            } catch (err) {
+                console.error(
+                    "JSON parse error:",
+                    err,
+                    "Raw response:",
+                    rawText
+                );
+                throw new Error(
+                    "Failed to parse response from server. Please try again."
+                );
+            }
+
+            // Check if the response contains an error field
+            if (data.error) {
+                setError(
+                    data.error + (data.details ? `: ${data.details}` : "")
+                );
+                console.error("API error:", data.error, data.details);
+
+                // If we have fallback verses despite the error, show them
+                if (data.verses && data.verses.length > 0) {
+                    setResults({
+                        lesson: data.lesson || lesson,
+                        verses: data.verses,
+                    });
+                }
+            }
+            // Check if we have verses to display
+            else if (data.verses && data.verses.length > 0) {
+                setResults(data);
+            }
+            // No verses found
+            else {
+                setError(
+                    "No Bible verses were found for this topic. Please try a different topic."
+                );
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            setError(
+                error instanceof Error
+                    ? error.message
+                    : "An unexpected error occurred"
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleExampleSelect = (exampleContent: string) => {
+        setLesson(exampleContent);
+        setError(null);
+    };
+
+    return (
+        <main className="container mx-auto py-8 px-4">
+            <Card className="max-w-3xl mx-auto">
+                <CardHeader>
+                    <CardTitle className="text-2xl flex items-center gap-2">
+                        <BookOpen className="h-6 w-6" />
+                        Bible Verse Finder
+                    </CardTitle>
+                    <CardDescription>
+                        Enter a topic or theme, and discover Bible verses for
+                        educational study.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <Textarea
+                            placeholder="Enter a topic or theme here (e.g., love, wisdom, faith)..."
+                            className="min-h-[150px]"
+                            value={lesson}
+                            onChange={(e) => setLesson(e.target.value)}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            For educational purposes only. This tool helps find
+                            Bible verses related to your topic for study and
+                            learning.
+                        </p>
+                        <ExampleLessons onSelectExample={handleExampleSelect} />
+                        <Button
+                            type="submit"
+                            disabled={isLoading || !lesson.trim()}
+                            className="w-full"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Finding Bible verses...
+                                </>
+                            ) : (
+                                "Find Bible Verses"
+                            )}
+                        </Button>
+                    </form>
+
+                    {error && (
+                        <Alert
+                            variant={results ? "default" : "destructive"}
+                            className="mt-4"
+                        >
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>
+                                {results ? "Note" : "Error"}
+                            </AlertTitle>
+                            <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                    )}
+
+                    {results && <VerseSuggestions results={results} />}
+                </CardContent>
+            </Card>
+        </main>
+    );
 }
