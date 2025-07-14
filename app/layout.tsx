@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
     title: "Bible Verse Finder",
     description:
-        "A simple web app for turning code snippets, text, or notes into shareable images in seconds.",
-    keywords: "code snippet, text, note, image, shareable",
+        "A web app designed to help users find and explore biblical verses with insights with ease.",
+    keywords: "bible, verse, finder, scripture, explore",
 };
 
 export default function RootLayout({
