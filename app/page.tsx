@@ -16,6 +16,7 @@ import { Loader2, BookOpen, AlertCircle } from "lucide-react";
 import { VerseSuggestions } from "@/components/verse-suggestions";
 import { ExampleLessons } from "@/components/example-lessons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import Image from "next/image";
 
 export default function Home() {
     const [lesson, setLesson] = useState("");
@@ -110,7 +111,7 @@ export default function Home() {
             <Card className="max-w-3xl mx-auto">
                 <CardHeader>
                     <CardTitle className="text-2xl flex items-center gap-2">
-                        <BookOpen className="h-6 w-6" />
+                        <Image width={50} height={50} src="/icon.png" alt="" />
                         Bible Verse Finder
                     </CardTitle>
                     <CardDescription>
